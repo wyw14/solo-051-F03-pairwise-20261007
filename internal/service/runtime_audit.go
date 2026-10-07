@@ -127,8 +127,10 @@ func (s *Service) Audit(ctx context.Context, runtime *Runtime) AuditReport {
 	state, changed := feedback.State()
 	report.Checks["shutter"] = fmt.Sprintf("state=%s at=%s", state, changed.Format(time.RFC3339Nano))
 	admission := source.NewAdmission(10)
-	if err := admission.Acquire(ctx, 2); err == nil {
-		admission.Release(2)
+	if reservation, err := admission.Reserve(ctx, 2); err == nil {
+		if err := reservation.Commit(); err == nil {
+			reservation.Release()
+		}
 	}
 	report.Checks["source_admission"] = fmt.Sprintf("used=%d", admission.Used())
 	starter := run.Starter{Registry: s.Runs, Vacuum: s.Vacuum}
